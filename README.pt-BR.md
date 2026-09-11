@@ -152,12 +152,12 @@ Sem key o plugin só loga um aviso e segue — o OpenCode não quebra.
 
 O `/models` só devolve `id` (às vezes `name`). Limites, esforços, preços e modalidades vêm de uma tabela estática em `codex-v1.ts` / `codex-v2.ts`, mantida contra [docs.codex-everywhere.com](https://docs.codex-everywhere.com/models/):
 
-- **OpenAI** — `gpt-6-astra`, `gpt-5.6-sol/terra/luna`, `gpt-5.5`, `gpt-5.4(-mini)`, `gpt-5.3-codex-spark`, `codex-auto-review`, `gpt-image-2` (preços = Codex Plus Pool `0.03x`; `gpt-5.3-codex-spark` usa Pro Pool `0.05x`)
-- **Anthropic** — `claude-fable-5-1`, `claude-opus-5`, `claude-sonnet-5`, `claude-haiku-4-5`, `claude-fable-5`, `claude-opus-4.8/4.7/4.6`, `claude-sonnet-4.6`, `claude-haiku-4.5` (preços = Kiro `0.045x`; `fable-5*` usa Max Pool `0.24x` porque o Kiro não tem)
-- **Google** — `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-3.1-pro(-preview)`, `gemini-3-flash-preview` (preços = Antigravity `0.06x`)
+- **OpenAI** — `gpt-6-astra`, `gpt-5.6-sol/terra/luna`, `gpt-5.5`, `gpt-5.3-codex-spark`, `codex-auto-review`, `gpt-image-2` (preços = Codex Plus Pool `0.03x`; `gpt-5.3-codex-spark` usa Pro Pool `0.05x`)
+- **Anthropic** — `claude-fable-5-1`, `claude-opus-5`, `claude-sonnet-5`, `claude-haiku-4-5` (preços = Kiro `0.045x`; `fable-5-1` usa Max Pool `0.24x` porque o Kiro não tem)
+- **Google** — `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.1-pro`, `gemini-3-flash-preview` (preços = Antigravity `0.06x`)
 - **xAI** — `grok-4.6`, `grok-4.5` (preços = Heavy Pool `0.06x`)
 
-Ids de modelo desconhecidos caem em heurísticas (prefixo da família → defaults conservadores), então modelos novos num pool aparecem antes da tabela ser atualizada.
+Ids que o CE tirou do roster (`gpt-5.4(-mini)`, `claude-fable-5`, `claude-opus-4.x`, `claude-sonnet-4.6`, `claude-haiku-4.5`, `gemini-3.5-flash`, `gemini-3.1-pro-preview`) ficam em `REMOVED_MODELS` — se o `/models` ainda listar um deles, o plugin filtra pra não chegar no seletor (selecionar daria erro no gateway de qualquer jeito). Ids desconhecidos que **não** estão nessa lista caem na heurística da família (defaults conservadores), então modelos novos num pool aparecem antes da tabela ser atualizada.
 
 > Os preços exibidos na TUI são as taxas dos pools CE acima. Se a sua key estiver num pool diferente (ex.: Claude Max em vez de Kiro), o custo mostrado é uma aproximação — o CE cobra por pool e o `/models` não informa em qual você está.
 

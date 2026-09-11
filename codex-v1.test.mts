@@ -7,7 +7,7 @@ describe("familyOf", () => {
   test("routes model ids to their family", () => {
     expect(familyOf("gpt-5.6-sol")).toBe("openai")
     expect(familyOf("claude-opus-5")).toBe("claude")
-    expect(familyOf("gemini-3.5-flash")).toBe("gemini")
+    expect(familyOf("gemini-3.7-flash")).toBe("gemini")
     expect(familyOf("grok-4.6")).toBe("grok")
   })
 })
@@ -88,5 +88,21 @@ describe("applyConfig", () => {
     const config = {} as Config
     applyConfig(config, "test-key", [])
     expect((config as any).provider).toBeUndefined()
+  })
+
+  test("models the CE roster dropped are filtered out", () => {
+    const config = {} as Config
+    applyConfig(config, "test-key", [
+      { id: "gpt-5.4" },
+      { id: "claude-sonnet-4.6" },
+      { id: "gemini-3.5-flash" },
+      { id: "gpt-5.5" },
+    ])
+
+    const providers = (config as any).provider
+    expect(providers["codex-everywhere"].models["gpt-5.4"]).toBeUndefined()
+    expect(providers["codex-everywhere"].models["gpt-5.5"]).toBeDefined()
+    expect(providers["codex-everywhere-claude"]).toBeUndefined()
+    expect(providers["codex-everywhere-gemini"]).toBeUndefined()
   })
 })

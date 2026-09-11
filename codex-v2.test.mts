@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import type { CatalogDraft, PluginContext } from "@opencode-ai/plugin/v2/promise"
 
-import { applyCatalog, familyOf, fetchModels, packageOf, setupCodexEverywhere } from "./codex-v2.ts"
+import { applyCatalog, familyOf, fetchModels, isRemoved, packageOf, setupCodexEverywhere } from "./codex-v2.ts"
 import type { RefreshScheduler } from "./codex-v2.ts"
 
 function fakeCatalog() {
@@ -37,7 +37,7 @@ function fakeCatalog() {
 const ALL_FAMILIES = [
   { id: "gpt-5.6-sol", name: "GPT-5.6 Sol" },
   { id: "claude-sonnet-5", name: "Claude Sonnet 5" },
-  { id: "gemini-3.5-flash", name: "Gemini 3.5 Flash" },
+  { id: "gemini-3.7-flash", name: "Gemini 3.7 Flash" },
   { id: "grok-4.5", name: "Grok 4.5" },
 ]
 
@@ -47,7 +47,7 @@ describe("familyOf", () => {
     expect(familyOf("codex-auto-review")).toBe("openai")
     expect(familyOf("claude-opus-5")).toBe("claude")
     expect(familyOf("anthropic/claude-sonnet-5")).toBe("claude")
-    expect(familyOf("gemini-3.5-flash")).toBe("gemini")
+    expect(familyOf("gemini-3.7-flash")).toBe("gemini")
     expect(familyOf("grok-4.6")).toBe("grok")
     expect(familyOf("xai/grok-4.5")).toBe("grok")
     expect(familyOf("something-new")).toBe("openai")
@@ -56,7 +56,7 @@ describe("familyOf", () => {
   test("maps families to their native SDK", () => {
     expect(packageOf("gpt-5.6-sol")).toBe("aisdk:@ai-sdk/openai")
     expect(packageOf("claude-opus-5")).toBe("aisdk:@ai-sdk/anthropic")
-    expect(packageOf("gemini-3.5-flash")).toBe("aisdk:@ai-sdk/google")
+    expect(packageOf("gemini-3.7-flash")).toBe("aisdk:@ai-sdk/google")
     expect(packageOf("grok-4.6")).toBe("aisdk:@ai-sdk/openai")
   })
 })
@@ -116,7 +116,7 @@ describe("applyCatalog", () => {
     expect(models.get("codex-everywhere-claude")!.get("claude-sonnet-5")).toMatchObject({
       limit: { context: 200_000, output: 64_000 },
     })
-    expect(models.get("codex-everywhere-gemini")!.get("gemini-3.5-flash")).toMatchObject({
+    expect(models.get("codex-everywhere-gemini")!.get("gemini-3.7-flash")).toMatchObject({
       capabilities: { input: ["text", "image", "pdf"] },
       limit: { context: 1_048_576, output: 65_536 },
     })
@@ -145,6 +145,23 @@ describe("applyCatalog", () => {
       capabilities: { tools: false, output: ["image"] },
       variants: [],
     })
+  })
+
+  test("models the CE roster dropped are filtered out", () => {
+    const { catalog, providers, models } = fakeCatalog()
+    expect(isRemoved("gpt-5.4")).toBe(true)
+    expect(isRemoved("claude-opus-4.8")).toBe(true)
+
+    applyCatalog(catalog, "test-key", [
+      { id: "gpt-5.4" },
+      { id: "claude-opus-4.8" },
+      { id: "claude-haiku-4.5" },
+      { id: "gpt-5.5" },
+    ])
+
+    expect(models.get("codex-everywhere")!.has("gpt-5.4")).toBe(false)
+    expect(models.get("codex-everywhere")!.has("gpt-5.5")).toBe(true)
+    expect(providers.has("codex-everywhere-claude")).toBe(false)
   })
 })
 

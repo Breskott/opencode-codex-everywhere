@@ -108,14 +108,6 @@ const MODELS: Readonly<Record<string, ModelSpec>> = {
     context: 400_000, output: 128_000, efforts: ["low", "medium", "high", "xhigh"],
     cost: { input: 0.15, output: 0.9, cache_read: 0.015 },
   },
-  "gpt-5.4": {
-    context: 1_050_000, output: 128_000, efforts: ["low", "medium", "high", "xhigh"],
-    cost: { input: 0.075, output: 0.45, cache_read: 0.0075 },
-  },
-  "gpt-5.4-mini": {
-    context: 400_000, output: 128_000, efforts: ["low", "medium", "high", "xhigh"],
-    cost: { input: 0.0225, output: 0.135, cache_read: 0.00225 },
-  },
   "gpt-5.3-codex-spark": {
     context: 128_000, output: 128_000, efforts: ["low", "medium", "high"],
     cost: { input: 0.0525, output: 0.42, cache_read: 0.00525 },
@@ -127,10 +119,6 @@ const MODELS: Readonly<Record<string, ModelSpec>> = {
     context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
     cost: { input: 2.4, output: 12, cache_read: 0.24 },
   },
-  "claude-fable-5": {
-    context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
-    cost: { input: 2.4, output: 12, cache_read: 0.24 },
-  },
   "claude-opus-5": {
     context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
     cost: { input: 0.225, output: 1.125, cache_read: 0.0225 },
@@ -139,27 +127,7 @@ const MODELS: Readonly<Record<string, ModelSpec>> = {
     context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
     cost: { input: 0.09, output: 0.45, cache_read: 0.009 },
   },
-  "claude-opus-4.8": {
-    context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
-    cost: { input: 0.225, output: 1.125, cache_read: 0.0225 },
-  },
-  "claude-opus-4.7": {
-    context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
-    cost: { input: 0.225, output: 1.125, cache_read: 0.0225 },
-  },
-  "claude-opus-4.6": {
-    context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
-    cost: { input: 0.225, output: 1.125, cache_read: 0.0225 },
-  },
-  "claude-sonnet-4.6": {
-    context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
-    cost: { input: 0.135, output: 0.675, cache_read: 0.0135 },
-  },
   "claude-haiku-4-5": {
-    context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
-    cost: { input: 0.045, output: 0.225, cache_read: 0.0045 },
-  },
-  "claude-haiku-4.5": {
     context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
     cost: { input: 0.045, output: 0.225, cache_read: 0.0045 },
   },
@@ -176,15 +144,7 @@ const MODELS: Readonly<Record<string, ModelSpec>> = {
     context: 1_048_576, output: 65_536, efforts: ["low", "medium", "high"],
     cost: { input: 0.045, output: 0.225, cache_read: 0.0045 },
   },
-  "gemini-3.5-flash": {
-    context: 1_048_576, output: 65_536, efforts: ["low", "medium", "high"],
-    cost: { input: 0.09, output: 0.54, cache_read: 0.009 },
-  },
   "gemini-3.1-pro": {
-    context: 1_048_576, output: 65_536, efforts: ["low", "medium", "high", "xhigh"],
-    cost: { input: 0.12, output: 0.72, cache_read: 0.012 },
-  },
-  "gemini-3.1-pro-preview": {
     context: 1_048_576, output: 65_536, efforts: ["low", "medium", "high", "xhigh"],
     cost: { input: 0.12, output: 0.72, cache_read: 0.012 },
   },
@@ -204,6 +164,26 @@ const MODELS: Readonly<Record<string, ModelSpec>> = {
 }
 
 const DEFAULT_EFFORTS: readonly string[] = ["low", "medium", "high"]
+
+// Ids que o CE removeu dos pools mas que o /models ainda pode devolver por um
+// tempo — sao filtrados do catalogo pra nao aparecerem no seletor (selecionar
+// um deles daria erro no gateway). Fonte: roster ativo publicado no site.
+export const REMOVED_MODELS: ReadonlySet<string> = new Set([
+  "gpt-5.4",
+  "gpt-5.4-mini",
+  "claude-fable-5",
+  "claude-opus-4.8",
+  "claude-opus-4.7",
+  "claude-opus-4.6",
+  "claude-sonnet-4.6",
+  "claude-haiku-4.5",
+  "gemini-3.5-flash",
+  "gemini-3.1-pro-preview",
+])
+
+export function isRemoved(id: string): boolean {
+  return REMOVED_MODELS.has(id)
+}
 
 export interface CodexModel {
   id: string
@@ -283,11 +263,12 @@ export async function fetchModels(apiKey: string, fetcher: Fetcher = fetch): Pro
  * destrutivo: o que o usuario tiver no opencode.json vence.
  */
 export function applyConfig(config: Config, apiKey: string, models: readonly CodexModel[]): void {
-  if (models.length === 0) return
+  const active = models.filter((model) => !isRemoved(model.id))
+  if (active.length === 0) return
   const providers = ((config as Record<string, unknown>).provider ??= {}) as Record<string, any>
 
   const byFamily = new Map<Family, CodexModel[]>()
-  for (const model of models) {
+  for (const model of active) {
     const family = familyOf(model.id)
     const list = byFamily.get(family) ?? []
     list.push(model)
