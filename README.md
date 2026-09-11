@@ -213,7 +213,6 @@ You'll see lines like:
 - **OpenCode 1.x** → `server.ts` serves the v1 hook-based factory (`codex-v1.ts`).
 - **OpenCode 2.x (beta)** → `server.ts` serves the v2 catalog plugin (`codex-v2.ts`).
 - Manual (non-git) installs are version-specific: `codex-v1.ts` for OpenCode 1.x, `codex-v2.ts` for OpenCode 2.x. Cross-mixing does not work — the `Config`/`Plugin`/`define`/`CatalogDraft` types are incompatible.
-- TUI note: this package is a **server** plugin (providers/models). The standalone tokens-per-second meter lives at [opencode-tui-tps](https://github.com/Breskott/opencode-tui-tps) and works on both runtimes.
 
 ---
 
