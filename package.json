@@ -1,0 +1,36 @@
+{
+  "name": "opencode-codex-everywhere",
+  "version": "1.0.0",
+  "description": "Codex Everywhere gateway provider for OpenCode (GPT / Claude / Gemini / Grok pools) - OpenCode 1.x and 2.x",
+  "type": "module",
+  "exports": {
+    "./server": "./server.ts"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": "^1.18.30"
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "^1.18.30",
+    "@types/bun": "^1.3.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "opencode": ">=1.3.14"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Breskott/opencode-codex-everywhere.git"
+  },
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "codex-everywhere",
+    "codex-easy",
+    "provider",
+    "openai",
+    "anthropic",
+    "gemini",
+    "grok"
+  ]
+}
