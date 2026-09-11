@@ -153,8 +153,8 @@ If no key is found, the plugin logs a warning and moves on — OpenCode does not
 The `/models` endpoint only returns `id` (sometimes `name`). Limits, efforts, prices, and modalities come from a static table in `codex-v1.ts` / `codex-v2.ts`, maintained against [docs.codex-everywhere.com](https://docs.codex-everywhere.com/models/):
 
 - **OpenAI** — `gpt-6-astra`, `gpt-5.6-sol/terra/luna`, `gpt-5.5`, `gpt-5.4(-mini)`, `gpt-5.3-codex-spark`, `codex-auto-review`, `gpt-image-2` (prices = Codex Plus Pool `0.03x`; `gpt-5.3-codex-spark` uses Pro Pool `0.05x`)
-- **Anthropic** — `claude-fable-5(-1)`, `claude-opus-5`, `claude-sonnet-5`, `claude-opus-4.8/4.7/4.6`, `claude-sonnet-4.6`, `claude-haiku-4.5` (prices = Kiro `0.045x`; `fable-5` uses Max Pool `0.24x` since Kiro does not carry it)
-- **Google** — `gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-3.1-pro(-preview)`, `gemini-3-flash-preview` (prices = Antigravity `0.06x`)
+- **Anthropic** — `claude-fable-5-1`, `claude-opus-5`, `claude-sonnet-5`, `claude-haiku-4-5`, `claude-fable-5`, `claude-opus-4.8/4.7/4.6`, `claude-sonnet-4.6`, `claude-haiku-4.5` (prices = Kiro `0.045x`; `fable-5*` uses Max Pool `0.24x` since Kiro does not carry it)
+- **Google** — `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-3.1-pro(-preview)`, `gemini-3-flash-preview` (prices = Antigravity `0.06x`)
 - **xAI** — `grok-4.6`, `grok-4.5` (prices = Heavy Pool `0.06x`)
 
 Unknown model ids fall back to heuristics (family prefix → conservative defaults), so new models added to a pool show up before the table is updated.

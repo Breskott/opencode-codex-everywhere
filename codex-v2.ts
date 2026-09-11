@@ -183,12 +183,20 @@ const MODELS: Readonly<Record<string, ModelSpec>> = {
     context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
     cost: { input: 0.135, output: 0.675, cache: { read: 0.0135, write: 0 } },
   },
+  "claude-haiku-4-5": {
+    context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
+    cost: { input: 0.045, output: 0.225, cache: { read: 0.0045, write: 0 } },
+  },
   "claude-haiku-4.5": {
     context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
     cost: { input: 0.045, output: 0.225, cache: { read: 0.0045, write: 0 } },
   },
 
   // ---- Google (pool Gemini Antigravity) ----
+  "gemini-3.8-flash": {
+    context: 1_048_576, output: 65_536, efforts: ["low", "medium", "high"],
+    cost: { input: 0.045, output: 0.225, cache: { read: 0.0045, write: 0 } },
+  },
   "gemini-3.7-flash": {
     context: 1_048_576, output: 65_536, efforts: ["low", "medium", "high"],
     cost: { input: 0.045, output: 0.225, cache: { read: 0.0045, write: 0 } },
