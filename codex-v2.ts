@@ -96,8 +96,7 @@ function resolveEnvKey(): string | undefined {
   return (
     process.env.CODEX_EVERYWHERE_API_KEY ??
     process.env.CODEX_EASY_API_KEY ??
-    process.env.CE_API_KEY ??
-    process.env.OPENAI_API_KEY
+    process.env.CE_API_KEY
   )
 }
 

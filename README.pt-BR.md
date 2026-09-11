@@ -75,7 +75,7 @@ Abra um terminal novo depois, para a variável carregar em sessões novas. Verif
 [Environment]::GetEnvironmentVariable("CODEX_EVERYWHERE_API_KEY", "User")
 ```
 
-> O plugin também aceita `CODEX_EASY_API_KEY` e `CE_API_KEY`, e usa `OPENAI_API_KEY` como fallback. Confira a base URL em `API Keys` → `Use Key` — se a sua for diferente de `codex-easy.ai`, defina também `CODEX_EVERYWHERE_BASE_URL`.
+> O plugin também aceita `CODEX_EASY_API_KEY` e `CE_API_KEY`. Confira a base URL em `API Keys` → `Use Key` — se a sua for diferente de `codex-easy.ai`, defina também `CODEX_EVERYWHERE_BASE_URL`.
 
 ### 2. Instale o plugin
 
@@ -123,7 +123,6 @@ Pronto. Os providers Codex Everywhere aparecem no seletor de modelos com todos o
 | --- | --- | --- |
 | `CODEX_EVERYWHERE_API_KEY` | sim* | Sua API key do CE |
 | `CODEX_EASY_API_KEY` / `CE_API_KEY` | alternativa | Mesma key, nomes alternativos |
-| `OPENAI_API_KEY` | fallback | Usada se nenhuma das acima existir |
 | `CODEX_EVERYWHERE_BASE_URL` | não | Sobrescreve o host base (padrão `https://codex-easy.ai`, Gemini usa `/v1beta`) |
 | `CODEX_EVERYWHERE_COMPAT` | não | `1` força `@ai-sdk/openai-compatible` (`/v1/chat/completions`) em **todas** as famílias — rota de fuga se um pool rejeitar o SDK nativo |
 
