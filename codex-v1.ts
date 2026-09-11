@@ -119,6 +119,10 @@ const MODELS: Readonly<Record<string, ModelSpec>> = {
     context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
     cost: { input: 2.4, output: 12, cache_read: 0.24 },
   },
+  "claude-fable-5": {
+    context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
+    cost: { input: 2.4, output: 12, cache_read: 0.24 },
+  },
   "claude-opus-5": {
     context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
     cost: { input: 0.225, output: 1.125, cache_read: 0.0225 },
@@ -127,29 +131,57 @@ const MODELS: Readonly<Record<string, ModelSpec>> = {
     context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
     cost: { input: 0.09, output: 0.45, cache_read: 0.009 },
   },
+  "claude-opus-4-8": {
+    context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
+    cost: { input: 0.225, output: 1.125, cache_read: 0.0225 },
+  },
+  "claude-opus-4-7": {
+    context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
+    cost: { input: 0.225, output: 1.125, cache_read: 0.0225 },
+  },
+  "claude-opus-4-6": {
+    context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
+    cost: { input: 0.225, output: 1.125, cache_read: 0.0225 },
+  },
+  "claude-sonnet-4-6": {
+    context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
+    cost: { input: 0.135, output: 0.675, cache_read: 0.0135 },
+  },
   "claude-haiku-4-5": {
+    context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
+    cost: { input: 0.045, output: 0.225, cache_read: 0.0045 },
+  },
+  "claude-haiku-4-5-20251001": {
     context: 200_000, output: 64_000, efforts: ["low", "medium", "high", "xhigh", "max"],
     cost: { input: 0.045, output: 0.225, cache_read: 0.0045 },
   },
 
   "gemini-3.8-flash": {
-    context: 1_048_576, output: 65_536, efforts: ["low", "medium", "high"],
+    context: 1_048_576, output: 65_536, efforts: ["minimal", "low", "medium", "high"],
     cost: { input: 0.045, output: 0.225, cache_read: 0.0045 },
   },
   "gemini-3.7-flash": {
-    context: 1_048_576, output: 65_536, efforts: ["low", "medium", "high"],
+    context: 1_048_576, output: 65_536, efforts: ["minimal", "low", "medium", "high"],
     cost: { input: 0.045, output: 0.225, cache_read: 0.0045 },
   },
   "gemini-3.6-flash": {
-    context: 1_048_576, output: 65_536, efforts: ["low", "medium", "high"],
+    context: 1_048_576, output: 65_536, efforts: ["minimal", "low", "medium", "high"],
     cost: { input: 0.045, output: 0.225, cache_read: 0.0045 },
   },
+  "gemini-3.5-flash": {
+    context: 1_048_576, output: 65_536, efforts: ["minimal", "low", "medium", "high"],
+    cost: { input: 0.09, output: 0.54, cache_read: 0.009 },
+  },
   "gemini-3.1-pro": {
-    context: 1_048_576, output: 65_536, efforts: ["low", "medium", "high", "xhigh"],
+    context: 1_048_576, output: 65_536, efforts: ["minimal", "low", "medium", "high"],
+    cost: { input: 0.12, output: 0.72, cache_read: 0.012 },
+  },
+  "gemini-3.1-pro-preview": {
+    context: 1_048_576, output: 65_536, efforts: ["minimal", "low", "medium", "high"],
     cost: { input: 0.12, output: 0.72, cache_read: 0.012 },
   },
   "gemini-3-flash-preview": {
-    context: 1_048_576, output: 65_536, efforts: ["low", "medium", "high"],
+    context: 1_048_576, output: 65_536, efforts: ["minimal", "low", "medium", "high"],
     cost: { input: 0.03, output: 0.18, cache_read: 0.003 },
   },
 
@@ -167,18 +199,10 @@ const DEFAULT_EFFORTS: readonly string[] = ["low", "medium", "high"]
 
 // Ids que o CE removeu dos pools mas que o /models ainda pode devolver por um
 // tempo — sao filtrados do catalogo pra nao aparecerem no seletor (selecionar
-// um deles daria erro no gateway). Fonte: roster ativo publicado no site.
+// um deles daria erro no gateway). Confirmado ausente em todos os pools ativos.
 export const REMOVED_MODELS: ReadonlySet<string> = new Set([
   "gpt-5.4",
   "gpt-5.4-mini",
-  "claude-fable-5",
-  "claude-opus-4.8",
-  "claude-opus-4.7",
-  "claude-opus-4.6",
-  "claude-sonnet-4.6",
-  "claude-haiku-4.5",
-  "gemini-3.5-flash",
-  "gemini-3.1-pro-preview",
 ])
 
 export function isRemoved(id: string): boolean {

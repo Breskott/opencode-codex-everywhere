@@ -153,11 +153,18 @@ If no key is found, the plugin logs a warning and moves on — OpenCode does not
 The `/models` endpoint only returns `id` (sometimes `name`). Limits, efforts, prices, and modalities come from a static table in `codex-v1.ts` / `codex-v2.ts`, maintained against [docs.codex-everywhere.com](https://docs.codex-everywhere.com/models/):
 
 - **OpenAI** — `gpt-6-astra`, `gpt-5.6-sol/terra/luna`, `gpt-5.5`, `gpt-5.3-codex-spark`, `codex-auto-review`, `gpt-image-2` (prices = Codex Plus Pool `0.03x`; `gpt-5.3-codex-spark` uses Pro Pool `0.05x`)
-- **Anthropic** — `claude-fable-5-1`, `claude-opus-5`, `claude-sonnet-5`, `claude-haiku-4-5` (prices = Kiro `0.045x`; `fable-5-1` uses Max Pool `0.24x` since Kiro does not carry it)
-- **Google** — `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.1-pro`, `gemini-3-flash-preview` (prices = Antigravity `0.06x`)
+- **Anthropic** — `claude-fable-5-1`, `claude-fable-5`, `claude-opus-5`, `claude-sonnet-5`, `claude-opus-4-8/4-7/4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5(-20251001)` (prices = Kiro `0.045x`; `fable-5*` uses Max Pool `0.24x` since Kiro does not carry it)
+- **Google** — `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-3.1-pro(-preview)`, `gemini-3-flash-preview` (prices = Antigravity `0.06x`)
 - **xAI** — `grok-4.6`, `grok-4.5` (prices = Heavy Pool `0.06x`)
 
-Ids the CE roster dropped (`gpt-5.4(-mini)`, `claude-fable-5`, `claude-opus-4.x`, `claude-sonnet-4.6`, `claude-haiku-4.5`, `gemini-3.5-flash`, `gemini-3.1-pro-preview`) live in `REMOVED_MODELS` — if `/models` still lists one of them, the plugin filters it out so it never reaches the picker (selecting it would fail at the gateway anyway). Unknown model ids that are *not* on that list fall back to family heuristics (conservative defaults), so new models added to a pool show up before the table is updated.
+Ids the CE roster dropped (`gpt-5.4`, `gpt-5.4-mini`) live in `REMOVED_MODELS` — if `/models` still lists one of them, the plugin filters it out so it never reaches the picker (selecting it would fail at the gateway anyway). Unknown model ids that are *not* on that list fall back to family heuristics (conservative defaults), so new models added to a pool show up before the table is updated.
+
+### Variants per family
+
+Variants map to whatever each gateway actually understands:
+
+- **OpenAI / xAI / Anthropic** — `reasoning_effort` in the request body (CE translates it per family; levels `low`→`ultra`/`max` depending on the model)
+- **Gemini** — `generationConfig.thinkingConfig.thinkingLevel` (`minimal`, `low`, `medium`, `high`). Verified live: `xhigh` is rejected with HTTP 400, so Gemini variants only expose the four valid levels.
 
 > Prices shown in the TUI are the CE pool rates above. If your key sits on a different pool (e.g. Claude Max instead of Kiro), the displayed cost is an approximation — CE bills by pool, and the `/models` response does not say which pool you are on.
 

@@ -148,20 +148,36 @@ describe("applyCatalog", () => {
   })
 
   test("models the CE roster dropped are filtered out", () => {
-    const { catalog, providers, models } = fakeCatalog()
+    const { catalog, models } = fakeCatalog()
     expect(isRemoved("gpt-5.4")).toBe(true)
-    expect(isRemoved("claude-opus-4.8")).toBe(true)
+    expect(isRemoved("gpt-5.4-mini")).toBe(true)
+    expect(isRemoved("claude-opus-4-8")).toBe(false)
 
     applyCatalog(catalog, "test-key", [
       { id: "gpt-5.4" },
-      { id: "claude-opus-4.8" },
-      { id: "claude-haiku-4.5" },
+      { id: "gpt-5.4-mini" },
+      { id: "claude-opus-4-8" },
       { id: "gpt-5.5" },
     ])
 
     expect(models.get("codex-everywhere")!.has("gpt-5.4")).toBe(false)
+    expect(models.get("codex-everywhere")!.has("gpt-5.4-mini")).toBe(false)
     expect(models.get("codex-everywhere")!.has("gpt-5.5")).toBe(true)
-    expect(providers.has("codex-everywhere-claude")).toBe(false)
+    expect(models.get("codex-everywhere-claude")!.has("claude-opus-4-8")).toBe(true)
+  })
+
+  test("gemini variants emit generationConfig.thinkingConfig.thinkingLevel", () => {
+    const { catalog, models } = fakeCatalog()
+    applyCatalog(catalog, "test-key", [{ id: "gemini-3.7-flash" }, { id: "gpt-5.6-sol" }])
+
+    const gemini = models.get("codex-everywhere-gemini")!.get("gemini-3.7-flash")!
+    expect(gemini.variants.map((v: any) => v.id)).toEqual(["minimal", "low", "medium", "high"])
+    expect(gemini.variants[0].body).toEqual({
+      generationConfig: { thinkingConfig: { thinkingLevel: "minimal" } },
+    })
+
+    const gpt = models.get("codex-everywhere")!.get("gpt-5.6-sol")!
+    expect(gpt.variants[0].body).toEqual({ reasoning_effort: "low" })
   })
 })
 

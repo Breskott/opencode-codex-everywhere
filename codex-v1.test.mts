@@ -94,15 +94,23 @@ describe("applyConfig", () => {
     const config = {} as Config
     applyConfig(config, "test-key", [
       { id: "gpt-5.4" },
-      { id: "claude-sonnet-4.6" },
-      { id: "gemini-3.5-flash" },
+      { id: "gpt-5.4-mini" },
+      { id: "claude-sonnet-4-6" },
       { id: "gpt-5.5" },
     ])
 
     const providers = (config as any).provider
     expect(providers["codex-everywhere"].models["gpt-5.4"]).toBeUndefined()
+    expect(providers["codex-everywhere"].models["gpt-5.4-mini"]).toBeUndefined()
     expect(providers["codex-everywhere"].models["gpt-5.5"]).toBeDefined()
-    expect(providers["codex-everywhere-claude"]).toBeUndefined()
-    expect(providers["codex-everywhere-gemini"]).toBeUndefined()
+    // claude-sonnet-4-6 segue ativo nos pools (dash form) — provider existe
+    expect(providers["codex-everywhere-claude"].models["claude-sonnet-4-6"]).toBeDefined()
+  })
+
+  test("gemini variants use valid thinking levels only", () => {
+    const config = {} as Config
+    applyConfig(config, "test-key", [{ id: "gemini-3.7-flash" }])
+    const variants = (config as any).provider["codex-everywhere-gemini"].models["gemini-3.7-flash"].variants
+    expect(Object.keys(variants)).toEqual(["minimal", "low", "medium", "high"])
   })
 })
