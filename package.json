@@ -1,7 +1,7 @@
 {
   "name": "opencode-codex-everywhere",
-  "version": "1.0.0",
-  "description": "Codex Everywhere gateway provider for OpenCode (GPT / Claude / Gemini / Grok pools) - OpenCode 1.x and 2.x",
+  "version": "1.1.0",
+  "description": "Codex Everywhere gateway provider for OpenCode (GPT / Claude / Gemini / Grok / DeepSeek pools) - OpenCode 1.x and 2.x",
   "type": "module",
   "exports": {
     "./server": "./server.ts"
@@ -31,6 +31,7 @@
     "openai",
     "anthropic",
     "gemini",
-    "grok"
+    "grok",
+    "deepseek"
   ]
 }

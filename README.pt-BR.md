@@ -30,11 +30,12 @@ A Codex Everywhere expõe o mesmo host (`codex-easy.ai`) em três protocolos:
 | Anthropic | `/v1` (Messages) | `claude-*` | `@ai-sdk/anthropic` |
 | Google | `/v1beta` (API Gemini) | `gemini-*` | `@ai-sdk/google` |
 | xAI | `/v1` (Responses) | `grok-*` | `@ai-sdk/openai` |
+| DeepSeek | `/v1` (Responses) | `deepseek-*` | `@ai-sdk/openai` |
 
-Quais modelos aparecem depende do **pool atribuído à sua API key** no site (Codex Plus/Pro, Claude Kiro/Max, Grok Heavy, Gemini Antigravity). Por isso o plugin **descobre os modelos ao vivo** em vez de fixar uma lista:
+Quais modelos aparecem depende do **pool atribuído à sua API key** no site (Codex Plus/Pro, Claude Kiro/Max, Grok Heavy, Gemini Antigravity, DeepSeek). Por isso o plugin **descobre os modelos ao vivo** em vez de fixar uma lista:
 
 1. `GET {base}/v1/models` devolve os modelos que o pool da sua key expõe.
-2. Cada modelo é roteado para uma família pelo `id` (`claude-*` → SDK Anthropic, `gemini-*` → SDK Google + `/v1beta`, `grok-*` → SDK OpenAI, `gpt-*`/`codex-*` → SDK OpenAI, desconhecido → OpenAI-compatible).
+2. Cada modelo é roteado para uma família pelo `id` (`claude-*` → SDK Anthropic, `gemini-*` → SDK Google + `/v1beta`, `grok-*` → SDK OpenAI, `deepseek-*` → SDK OpenAI via Responses API, `gpt-*`/`codex-*` → SDK OpenAI, desconhecido → OpenAI-compatible).
 3. Cada família vira um provider separado no OpenCode:
 
    | Provider id | Aparece como |
@@ -43,6 +44,7 @@ Quais modelos aparecem depende do **pool atribuído à sua API key** no site (Co
    | `codex-everywhere-claude` | Codex Everywhere · Claude |
    | `codex-everywhere-gemini` | Codex Everywhere · Gemini |
    | `codex-everywhere-grok` | Codex Everywhere · Grok |
+   | `codex-everywhere-deepseek` | Codex Everywhere · DeepSeek |
 
    O provider só aparece se o pool da sua key tiver modelos daquela família — uma key Codex Plus só mostra `codex-everywhere`, uma key Claude Max só mostra `codex-everywhere-claude`, e assim por diante.
 
@@ -124,7 +126,7 @@ Pronto. Os providers Codex Everywhere aparecem no seletor de modelos com todos o
 | `CODEX_EVERYWHERE_API_KEY` | sim* | Sua API key do CE |
 | `CODEX_EASY_API_KEY` / `CE_API_KEY` | alternativa | Mesma key, nomes alternativos |
 | `CODEX_EVERYWHERE_BASE_URL` | não | Sobrescreve o host base (padrão `https://codex-easy.ai`, Gemini usa `/v1beta`) |
-| `CODEX_EVERYWHERE_COMPAT` | não | `1` força `@ai-sdk/openai-compatible` (`/v1/chat/completions`) em **todas** as famílias — rota de fuga se um pool rejeitar o SDK nativo |
+| `CODEX_EVERYWHERE_COMPAT` | não | `1` força `@ai-sdk/openai-compatible` (`/v1/chat/completions`) em **todas** as famílias — rota de fuga se um pool rejeitar o SDK nativo. No DeepSeek isso abre mão de tools multi-turno: o chat/completions exige devolver o `reasoning_content` ou retorna HTTP 400 |
 
 Sem key o plugin só loga um aviso e segue — o OpenCode não quebra.
 
@@ -139,7 +141,7 @@ Sem key o plugin só loga um aviso e segue — o OpenCode não quebra.
 | **Como os providers registram** | `config.provider[id] = {...}` pelo hook `config` | `ctx.catalog.transform(catalog => ...)` |
 | **Campo do SDK** | `npm: "@ai-sdk/..."` (por provider) | `package: "aisdk:@ai-sdk/..."` (provider + por modelo) |
 | **Momento da descoberta** | Dentro do `config` no startup, cache em memória de 5 min | Background, sem bloquear, `catalog.reload()` a cada 5 min quando a lista muda |
-| **`variants` (esforço)** | Objeto nomeado `{ low: { reasoningEffort: "low" }, ... }` | Array `{ id, headers: {}, body: { reasoning_effort } }[]` |
+| **`variants` (esforço)** | Objeto nomeado `{ low: { reasoningEffort: "low" }, ... }` | Array `{ id, headers: {}, body }` — `reasoning_effort` (OpenAI/xAI/Anthropic), `reasoning.effort` (DeepSeek), `generationConfig.thinkingConfig.thinkingLevel` (Gemini) |
 | **Formato de `cost`** | Objeto `{ input, output, cache_read, cache_write }` | Array `ModelCost[]` `{ input, output, cache: { read, write } }` |
 | **Se o `/models` falhar** | Provider sobe com lista vazia | Igual; o refresh de 5 min continua tentando |
 
@@ -155,6 +157,7 @@ O `/models` só devolve `id` (às vezes `name`). Limites, esforços, preços e m
 - **Anthropic** — `claude-fable-5-1`, `claude-fable-5`, `claude-opus-5`, `claude-sonnet-5`, `claude-opus-4-8/4-7/4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5(-20251001)` (preços = Kiro `0.045x`; `fable-5*` usa Max Pool `0.24x` porque o Kiro não tem)
 - **Google** — `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-3.1-pro(-preview)`, `gemini-3-flash-preview` (preços = Antigravity `0.06x`)
 - **xAI** — `grok-4.6`, `grok-4.5` (preços = Heavy Pool `0.06x`)
+- **DeepSeek** — `deepseek-flash` (= DeepSeek-V4.1-Flash, multimodal nativo, thinking mode) e `deepseek-v4-pro` (= V4-Pro-0813, texto puro), mais os aliases legados `deepseek-v4-flash`, `deepseek-v4-flash-vision-exp`, `deepseek-v4.1-flash-expires-on-0910` e `deepseek-v4-pro-0813` (aposentados pela DeepSeek mas ainda roteados por compatibilidade, mesma tarifa). Limites: **1M de contexto / 384K de saída**. Preços = oficiais da DeepSeek (off-peak; pico custa 2x) — o CE ainda não publicou o preço do pool DeepSeek, então a TUI mostra a referência oficial.
 
 Ids que o CE tirou do roster (`gpt-5.4`, `gpt-5.4-mini`) ficam em `REMOVED_MODELS` — se o `/models` ainda listar um deles, o plugin filtra pra não chegar no seletor (selecionar daria erro no gateway de qualquer jeito). Ids desconhecidos que **não** estão nessa lista caem na heurística da família (defaults conservadores), então modelos novos num pool aparecem antes da tabela ser atualizada.
 
@@ -163,6 +166,7 @@ Ids que o CE tirou do roster (`gpt-5.4`, `gpt-5.4-mini`) ficam em `REMOVED_MODEL
 Cada variant vira o que o gateway realmente entende:
 
 - **OpenAI / xAI / Anthropic** — `reasoning_effort` no body da request (o CE traduz por família; níveis `low`→`ultra`/`max` conforme o modelo)
+- **DeepSeek** — `reasoning.effort` aninhado na Responses API (`low`, `high`, `max`). Verificado ao vivo: `reasoning_effort` de topo é **ignorado** pela rota Responses do CE, e a rota chat/completions exige devolver o `reasoning_content` em todo turno com tools (HTTP 400 caso contrário) — por isso essa família usa Responses
 - **Gemini** — `generationConfig.thinkingConfig.thinkingLevel` (`minimal`, `low`, `medium`, `high`). Validado ao vivo: `xhigh` é rejeitado com HTTP 400, então as variants do Gemini só expõem os quatro níveis válidos.
 
 > Os preços exibidos na TUI são as taxas dos pools CE acima. Se a sua key estiver num pool diferente (ex.: Claude Max em vez de Kiro), o custo mostrado é uma aproximação — o CE cobra por pool e o `/models` não informa em qual você está.
@@ -224,7 +228,7 @@ Linhas típicas:
 
 ## Créditos
 
-- Provider: [Codex Everywhere](https://codex-everywhere.com) — gateway multi-pool para Codex/Claude/Gemini/Grok com preço de pool ([docs](https://docs.codex-everywhere.com)).
+- Provider: [Codex Everywhere](https://codex-everywhere.com) — gateway multi-pool para Codex/Claude/Gemini/Grok/DeepSeek com preço de pool ([docs](https://docs.codex-everywhere.com)).
 - Cliente: [OpenCode](https://opencode.ai) — agente de código aberto com IA.
 - Mantido por **Victor Brescott** ([@Breskott](https://github.com/Breskott)).
 - Licença: MIT — use à vontade.

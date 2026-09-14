@@ -39,6 +39,9 @@ const ALL_FAMILIES = [
   { id: "claude-sonnet-5", name: "Claude Sonnet 5" },
   { id: "gemini-3.7-flash", name: "Gemini 3.7 Flash" },
   { id: "grok-4.5", name: "Grok 4.5" },
+  { id: "deepseek-flash", name: "deepseek-flash" },
+  { id: "deepseek-v4-flash-vision-exp", name: "deepseek-v4-flash-vision-exp" },
+  { id: "deepseek-v4-pro", name: "deepseek-v4-pro" },
 ]
 
 describe("familyOf", () => {
@@ -50,6 +53,10 @@ describe("familyOf", () => {
     expect(familyOf("gemini-3.7-flash")).toBe("gemini")
     expect(familyOf("grok-4.6")).toBe("grok")
     expect(familyOf("xai/grok-4.5")).toBe("grok")
+    expect(familyOf("deepseek-flash")).toBe("deepseek")
+    expect(familyOf("deepseek-v4-flash-vision-exp")).toBe("deepseek")
+    expect(familyOf("deepseek-v4-pro")).toBe("deepseek")
+    expect(familyOf("deepseek/deepseek-v4-pro")).toBe("deepseek")
     expect(familyOf("something-new")).toBe("openai")
   })
 
@@ -58,6 +65,7 @@ describe("familyOf", () => {
     expect(packageOf("claude-opus-5")).toBe("aisdk:@ai-sdk/anthropic")
     expect(packageOf("gemini-3.7-flash")).toBe("aisdk:@ai-sdk/google")
     expect(packageOf("grok-4.6")).toBe("aisdk:@ai-sdk/openai")
+    expect(packageOf("deepseek-flash")).toBe("aisdk:@ai-sdk/openai")
   })
 })
 
@@ -68,7 +76,7 @@ describe("fetchModels", () => {
       return Response.json({ data: ALL_FAMILIES })
     }
 
-    await expect(fetchModels("test-key", fetcher)).resolves.toHaveLength(4)
+    await expect(fetchModels("test-key", fetcher)).resolves.toHaveLength(7)
   })
 
   test("rejects an unsuccessful response", async () => {
@@ -103,6 +111,12 @@ describe("applyCatalog", () => {
     expect(providers.get("codex-everywhere-grok")?.api).toMatchObject({
       package: "aisdk:@ai-sdk/openai",
     })
+    expect(providers.get("codex-everywhere-deepseek")).toMatchObject({
+      name: "Codex Everywhere · DeepSeek",
+      package: "aisdk:@ai-sdk/openai",
+      api: { type: "aisdk", package: "aisdk:@ai-sdk/openai" },
+      request: { body: { store: false } },
+    })
 
     expect(models.get("codex-everywhere")!.get("gpt-5.6-sol")).toMatchObject({
       name: "GPT-5.6 Sol",
@@ -110,7 +124,7 @@ describe("applyCatalog", () => {
       capabilities: { tools: true },
       cost: [{ input: 0.15, output: 0.9 }],
     })
-    expect(models.get("codex-everywhere")!.get("gpt-5.6-sol")!.variants.map((v: any) => v.id)).toEqual([
+    expect((models.get("codex-everywhere")!.get("gpt-5.6-sol")! as any).variants.map((v: any) => v.id)).toEqual([
       "low", "medium", "high", "xhigh", "max", "ultra",
     ])
     expect(models.get("codex-everywhere-claude")!.get("claude-sonnet-5")).toMatchObject({
@@ -122,6 +136,19 @@ describe("applyCatalog", () => {
     })
     expect(models.get("codex-everywhere-grok")!.get("grok-4.5")).toMatchObject({
       limit: { context: 500_000, output: 128_000 },
+    })
+    expect(models.get("codex-everywhere-deepseek")!.get("deepseek-flash")).toMatchObject({
+      limit: { context: 1_000_000, output: 384_000 },
+      capabilities: { tools: true, input: ["text", "image"], output: ["text"] },
+      cost: [{ input: 0.15, output: 0.6 }],
+    })
+    expect(models.get("codex-everywhere-deepseek")!.get("deepseek-v4-flash-vision-exp")).toMatchObject({
+      capabilities: { input: ["text", "image"] },
+    })
+    // V4-Pro e texto puro (sem visao) — anunciar image quebraria o attach da TUI.
+    expect(models.get("codex-everywhere-deepseek")!.get("deepseek-v4-pro")).toMatchObject({
+      capabilities: { input: ["text"] },
+      limit: { context: 1_000_000, output: 384_000 },
     })
   })
 
@@ -170,14 +197,24 @@ describe("applyCatalog", () => {
     const { catalog, models } = fakeCatalog()
     applyCatalog(catalog, "test-key", [{ id: "gemini-3.7-flash" }, { id: "gpt-5.6-sol" }])
 
-    const gemini = models.get("codex-everywhere-gemini")!.get("gemini-3.7-flash")!
+    const gemini = models.get("codex-everywhere-gemini")!.get("gemini-3.7-flash")! as any
     expect(gemini.variants.map((v: any) => v.id)).toEqual(["minimal", "low", "medium", "high"])
     expect(gemini.variants[0].body).toEqual({
       generationConfig: { thinkingConfig: { thinkingLevel: "minimal" } },
     })
 
-    const gpt = models.get("codex-everywhere")!.get("gpt-5.6-sol")!
+    const gpt = models.get("codex-everywhere")!.get("gpt-5.6-sol")! as any
     expect(gpt.variants[0].body).toEqual({ reasoning_effort: "low" })
+  })
+
+  test("deepseek variants emit nested reasoning.effort (top-level is ignored by the CE Responses route)", () => {
+    const { catalog, models } = fakeCatalog()
+    applyCatalog(catalog, "test-key", [{ id: "deepseek-flash" }])
+
+    const deepseek = models.get("codex-everywhere-deepseek")!.get("deepseek-flash")! as any
+    expect(deepseek.variants.map((v: any) => v.id)).toEqual(["low", "high", "max"])
+    expect(deepseek.variants[0].body).toEqual({ reasoning: { effort: "low" } })
+    expect(deepseek.request).toEqual({ headers: {}, body: { store: false } })
   })
 })
 

@@ -8,11 +8,11 @@ export type RefreshScheduler = (callback: () => Promise<void>, delayMs: number) 
 // o server.ts escolhe a implementacao certa por runtime.
 //
 // A Codex Everywhere expoe o MESMO host (codex-easy.ai) em tres protocolos:
-//   - OpenAI Responses/Chat:  /v1         -> modelos gpt-*, codex-*, grok-*
+//   - OpenAI Responses/Chat:  /v1         -> modelos gpt-*, codex-*, grok-*, deepseek-*
 //   - Anthropic Messages:     /v1         -> modelos claude-*
 //   - Google Gemini:          /v1beta     -> modelos gemini-*
 // A lista de modelos depende do POOL da API key escolhido no site
-// (Codex Plus/Pro, Claude Kiro/Max, Grok Heavy, Gemini Antigravity) — por isso
+// (Codex Plus/Pro, Claude Kiro/Max, Grok Heavy, Gemini Antigravity, DeepSeek) — por isso
 // o provider e descoberto ao vivo via GET /v1/models e cada modelo e roteado
 // para o provider certo pela familia do id.
 // ---------------------------------------------------------------------------
@@ -30,7 +30,7 @@ declare const process: { env: Record<string, string | undefined> }
 // FAMILIAS -> provider + SDK. Cada familia vira um provider separado no
 // catalogo para que cada grupo use o SDK nativo (igual a doc oficial do CE).
 // ---------------------------------------------------------------------------
-export type Family = "openai" | "claude" | "gemini" | "grok"
+export type Family = "openai" | "claude" | "gemini" | "grok" | "deepseek"
 
 export interface FamilySpec {
   providerID: string
@@ -65,6 +65,16 @@ export const FAMILIES: Readonly<Record<Family, FamilySpec>> = {
     pkg: "aisdk:@ai-sdk/openai",
     baseURL: `${BASE_HOST}/v1`,
   },
+  // O pool DeepSeek fala o Responses API (adaptado pelo CE/DeepSeek para
+  // Codex) — o chat/completions puro quebra tools multi-turno por exigir o
+  // reasoning_content de volta (HTTP 400 confirmado), entao usamos o mesmo
+  // SDK das familias OpenAI/grok.
+  deepseek: {
+    providerID: "codex-everywhere-deepseek",
+    providerName: "Codex Everywhere · DeepSeek",
+    pkg: "aisdk:@ai-sdk/openai",
+    baseURL: `${BASE_HOST}/v1`,
+  },
 }
 
 // CODEX_EVERYWHERE_COMPAT=1 forca @ai-sdk/openai-compatible (/v1/chat/completions)
@@ -77,6 +87,7 @@ export function familyOf(id: string): Family {
   if (lower.startsWith("claude-") || lower.includes("/claude")) return "claude"
   if (lower.startsWith("gemini") || lower.includes("/gemini")) return "gemini"
   if (lower.startsWith("grok-") || lower.startsWith("grok_") || lower.includes("/grok")) return "grok"
+  if (lower.startsWith("deepseek") || lower.includes("/deepseek")) return "deepseek"
   return "openai"
 }
 
@@ -105,7 +116,9 @@ function resolveEnvKey(): string | undefined {
 // esforcos, precos e capabilities vem daqui. Fonte: docs.codex-everywhere.com
 // (/models/* e /integrations/opencode). Precos = pools mais comuns do CE
 // (Plus 0.03x GPT, Kiro 0.045x Claude, Heavy 0.06x Grok, Antigravity 0.06x
-// Gemini, Max 0.24x pro claude-fable-5 que so existe no Max). USD por 1M tok.
+// Gemini, Max 0.24x pro claude-fable-5 que so existe no Max). Para o DeepSeek
+// o CE ainda nao publicou o pool: usamos os precos oficiais da DeepSeek
+// (api-docs.deepseek.com, tarifa off-peak). USD por 1M tok.
 // ---------------------------------------------------------------------------
 interface ModelSpec {
   context: number
@@ -113,6 +126,9 @@ interface ModelSpec {
   efforts?: readonly string[]
   cost?: { input: number; output: number; cache: { read: number; write: number } }
 }
+
+// Esforcos nativos do thinking mode DeepSeek (Responses API: reasoning.effort).
+const DEEPSEEK_EFFORTS: readonly string[] = ["low", "high", "max"]
 
 const MODELS: Readonly<Record<string, ModelSpec>> = {
   // ---- OpenAI (pools Codex Plus/Pro) ----
@@ -222,6 +238,39 @@ const MODELS: Readonly<Record<string, ModelSpec>> = {
     context: 500_000, output: 128_000, efforts: ["low", "medium", "high"],
     cost: { input: 0.12, output: 0.36, cache: { read: 0.018, write: 0 } },
   },
+
+  // ---- DeepSeek (pool DeepSeek) ----
+  // Fonte: api-docs.deepseek.com (Models & Pricing + changelog 2026-09-10).
+  // deepseek-flash = V4.1-Flash (multimodal, 1M de contexto, 384K de saida);
+  // deepseek-v4-pro = V4-Pro-0813 (texto puro). Precos = oficiais da DeepSeek
+  // na tarifa off-peak (pico custa 2x); o CE ainda nao publicou o preco do
+  // pool DeepSeek, entao a TUI mostra a referencia oficial.
+  "deepseek-flash": {
+    context: 1_000_000, output: 384_000, efforts: DEEPSEEK_EFFORTS,
+    cost: { input: 0.15, output: 0.6, cache: { read: 0.003, write: 0 } },
+  },
+  // Aliases legados do V4.1-Flash: aposentados pela DeepSeek, mas roteados
+  // para o V4.1-Flash por compatibilidade (cobrados como Flash).
+  "deepseek-v4-flash": {
+    context: 1_000_000, output: 384_000, efforts: DEEPSEEK_EFFORTS,
+    cost: { input: 0.15, output: 0.6, cache: { read: 0.003, write: 0 } },
+  },
+  "deepseek-v4-flash-vision-exp": {
+    context: 1_000_000, output: 384_000, efforts: DEEPSEEK_EFFORTS,
+    cost: { input: 0.15, output: 0.6, cache: { read: 0.003, write: 0 } },
+  },
+  "deepseek-v4.1-flash-expires-on-0910": {
+    context: 1_000_000, output: 384_000, efforts: DEEPSEEK_EFFORTS,
+    cost: { input: 0.15, output: 0.6, cache: { read: 0.003, write: 0 } },
+  },
+  "deepseek-v4-pro": {
+    context: 1_000_000, output: 384_000, efforts: DEEPSEEK_EFFORTS,
+    cost: { input: 0.66, output: 1.98, cache: { read: 0.022, write: 0 } },
+  },
+  "deepseek-v4-pro-0813": {
+    context: 1_000_000, output: 384_000, efforts: DEEPSEEK_EFFORTS,
+    cost: { input: 0.66, output: 1.98, cache: { read: 0.022, write: 0 } },
+  },
 }
 
 const DEFAULT_EFFORTS: readonly string[] = ["low", "medium", "high"]
@@ -248,6 +297,8 @@ function specOf(source: CodexModel): ModelSpec {
   if (lower.includes("gemini")) return { context: 1_048_576, output: 65_536, efforts: DEFAULT_EFFORTS }
   if (lower.includes("grok")) return { context: 500_000, output: 128_000, efforts: DEFAULT_EFFORTS }
   if (lower.includes("claude")) return { context: 200_000, output: 64_000, efforts: DEFAULT_EFFORTS }
+  // Familia DeepSeek: V4 tem 1M de contexto / 384K de saida e esforcos low/high/max.
+  if (lower.includes("deepseek")) return { context: 1_000_000, output: 384_000, efforts: DEEPSEEK_EFFORTS }
   if (lower.includes("mini") || lower.includes("spark") || lower.includes("auto-review")) {
     return { context, output: 128_000, efforts: DEFAULT_EFFORTS }
   }
@@ -256,8 +307,11 @@ function specOf(source: CodexModel): ModelSpec {
 
 function inputModalities(id: string): string[] {
   const lower = id.toLowerCase()
+  const family = familyOf(id)
   if (lower.includes("image")) return ["text", "image"]
-  if (familyOf(id) === "gemini") return ["text", "image", "pdf"]
+  if (family === "gemini") return ["text", "image", "pdf"]
+  // DeepSeek V4.1-Flash (e os aliases flash/vision) aceitam imagem; V4-Pro e texto.
+  if (family === "deepseek") return lower.includes("pro") ? ["text"] : ["text", "image"]
   return ["text", "image"] // gpt/claude/grok aceitam imagem na entrada
 }
 
@@ -337,7 +391,7 @@ export function applyCatalog(catalog: CatalogDraft, apiKey: string, models: read
       p.package = pkg
       p.settings = settings
       provider.api = { type: "aisdk", package: pkg, settings }
-      provider.request = { headers: {}, body: family === "openai" ? { store: false } : {} }
+      provider.request = { headers: {}, body: family === "openai" || family === "deepseek" ? { store: false } : {} }
     })
 
     for (const source of familyModels) {
@@ -362,14 +416,19 @@ export function applyCatalog(catalog: CatalogDraft, apiKey: string, models: read
           id: effort,
           headers: {},
           // Gemini 3 fala thinkingLevel (minimal/low/medium/high) dentro de
-          // generationConfig; as demais familias recebem reasoning_effort e o
-          // gateway do CE traduz (doc oficial).
+          // generationConfig; o DeepSeek fala reasoning.effort (aninhado) no
+          // Responses — reasoning_effort de topo e ignorado pelo gateway
+          // (verificado ao vivo). As demais familias recebem reasoning_effort
+          // e o gateway do CE traduz (doc oficial).
           body: family === "gemini"
             ? { generationConfig: { thinkingConfig: { thinkingLevel: effort } } }
-            : { reasoning_effort: effort },
+            : family === "deepseek"
+              ? { reasoning: { effort } }
+              : { reasoning_effort: effort },
         }))
-        if (family === "openai") {
+        if (family === "openai" || family === "deepseek") {
           // doc oficial do CE para OpenCode: store:false nos modelos OpenAI
+          // (o Responses do DeepSeek tambem responde store:false por padrao)
           model.request = { headers: {}, body: { store: false } }
         }
         const mm = model as unknown as Record<string, unknown>

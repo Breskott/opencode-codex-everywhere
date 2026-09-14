@@ -9,6 +9,9 @@ describe("familyOf", () => {
     expect(familyOf("claude-opus-5")).toBe("claude")
     expect(familyOf("gemini-3.7-flash")).toBe("gemini")
     expect(familyOf("grok-4.6")).toBe("grok")
+    expect(familyOf("deepseek-flash")).toBe("deepseek")
+    expect(familyOf("deepseek-v4-flash-vision-exp")).toBe("deepseek")
+    expect(familyOf("deepseek-v4-pro")).toBe("deepseek")
   })
 })
 
@@ -37,6 +40,8 @@ describe("applyConfig", () => {
       { id: "claude-sonnet-5" },
       { id: "gemini-3.1-pro" },
       { id: "grok-4.5" },
+      { id: "deepseek-flash" },
+      { id: "deepseek-v4-pro" },
     ])
 
     const providers = (config as any).provider
@@ -51,6 +56,11 @@ describe("applyConfig", () => {
       options: { baseURL: "https://codex-easy.ai/v1beta" },
     })
     expect(providers["codex-everywhere-grok"]).toMatchObject({ npm: "@ai-sdk/openai" })
+    expect(providers["codex-everywhere-deepseek"]).toMatchObject({
+      npm: "@ai-sdk/openai",
+      name: "Codex Everywhere · DeepSeek",
+      options: { baseURL: "https://codex-easy.ai/v1", apiKey: "test-key" },
+    })
 
     expect(providers["codex-everywhere"].models["gpt-5.6-sol"]).toMatchObject({
       name: "GPT-5.6 Sol",
@@ -64,6 +74,22 @@ describe("applyConfig", () => {
     ])
     expect(providers["codex-everywhere-claude"].models["claude-sonnet-5"]).toMatchObject({
       limit: { context: 200_000, output: 64_000 },
+    })
+    expect(providers["codex-everywhere-deepseek"].models["deepseek-flash"]).toMatchObject({
+      tool_call: true,
+      reasoning: true,
+      options: { store: false },
+      modalities: { input: ["text", "image"], output: ["text"] },
+      limit: { context: 1_000_000, output: 384_000 },
+      cost: { input: 0.15, output: 0.6, cache_read: 0.003 },
+    })
+    expect(Object.keys(providers["codex-everywhere-deepseek"].models["deepseek-flash"].variants)).toEqual([
+      "low", "high", "max",
+    ])
+    // V4-Pro e texto puro (sem visao).
+    expect(providers["codex-everywhere-deepseek"].models["deepseek-v4-pro"].modalities).toEqual({
+      input: ["text"],
+      output: ["text"],
     })
   })
 
