@@ -86,11 +86,11 @@ describe("familyOf", () => {
   })
 
   test("maps families to their native SDK", () => {
-    expect(packageOf("gpt-5.6-sol")).toBe("aisdk:@ai-sdk/openai")
-    expect(packageOf("claude-opus-5")).toBe("aisdk:@ai-sdk/anthropic")
-    expect(packageOf("gemini-3.7-flash")).toBe("aisdk:@ai-sdk/google")
-    expect(packageOf("grok-4.6")).toBe("aisdk:@ai-sdk/openai")
-    expect(packageOf("deepseek-flash")).toBe("aisdk:@ai-sdk/openai")
+    expect(packageOf("gpt-5.6-sol")).toBe("aisdk:@ai-sdk/openai@3.0.113")
+    expect(packageOf("claude-opus-5")).toBe("aisdk:@ai-sdk/anthropic@3.0.118")
+    expect(packageOf("gemini-3.7-flash")).toBe("aisdk:@ai-sdk/google@3.0.123")
+    expect(packageOf("grok-4.6")).toBe("aisdk:@ai-sdk/openai@3.0.113")
+    expect(packageOf("deepseek-flash")).toBe("aisdk:@ai-sdk/openai@3.0.113")
   })
 })
 
@@ -129,23 +129,23 @@ describe("applyProviders", () => {
     expect(provider("codex-everywhere")).toMatchObject({
       name: "Codex Everywhere",
       activation: "auto",
-      package: "aisdk:@ai-sdk/openai",
+      package: "aisdk:@ai-sdk/openai@3.0.113",
       body: { store: false },
     })
     expect(provider("codex-everywhere-claude")).toMatchObject({
-      package: "aisdk:@ai-sdk/anthropic",
+      package: "aisdk:@ai-sdk/anthropic@3.0.118",
     })
     expect(provider("codex-everywhere-gemini")).toMatchObject({
-      package: "aisdk:@ai-sdk/google",
+      package: "aisdk:@ai-sdk/google@3.0.123",
       settings: { baseURL: "https://codex-easy.ai/v1beta" },
     })
     expect(provider("codex-everywhere-grok")).toMatchObject({
-      package: "aisdk:@ai-sdk/openai",
+      package: "aisdk:@ai-sdk/openai@3.0.113",
     })
     expect(provider("codex-everywhere-deepseek")).toMatchObject({
       name: "Codex Everywhere · DeepSeek",
       activation: "auto",
-      package: "aisdk:@ai-sdk/openai",
+      package: "aisdk:@ai-sdk/openai@3.0.113",
       body: { store: false },
     })
 

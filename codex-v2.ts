@@ -32,6 +32,14 @@ declare const process: { env: Record<string, string | undefined> }
 // ---------------------------------------------------------------------------
 // FAMILIAS -> provider + SDK. Cada familia vira um provider separado no
 // catalogo para que cada grupo use o SDK nativo (igual a doc oficial do CE).
+//
+// As versoes do AI SDK sao FIXADAS na linha do @ai-sdk/provider v3 (3.0.x), o
+// mesmo major que o opencode 2.0.5 usa para montar o prompt do modelo. Sem o
+// pin, o opencode instala @latest (@ai-sdk/provider v4), cujo conversor NAO
+// reconhece a parte de imagem/arquivo do prompt v3 e a serializa como `null` no
+// request -> o gateway responde "Invalid input"/"Bad Request" em qualquer chat
+// com anexo. Texto nao mudou de formato entre v3 e v4, por isso so o anexo
+// quebrava. Reavaliar estes pins quando o opencode subir o major do provider.
 // ---------------------------------------------------------------------------
 export type Family = "openai" | "claude" | "gemini" | "grok" | "deepseek"
 
@@ -47,25 +55,25 @@ export const FAMILIES: Readonly<Record<Family, FamilySpec>> = {
   openai: {
     providerID: "codex-everywhere",
     providerName: "Codex Everywhere",
-    pkg: "aisdk:@ai-sdk/openai",
+    pkg: "aisdk:@ai-sdk/openai@3.0.113",
     baseURL: `${BASE_HOST}/v1`,
   },
   claude: {
     providerID: "codex-everywhere-claude",
     providerName: "Codex Everywhere · Claude",
-    pkg: "aisdk:@ai-sdk/anthropic",
+    pkg: "aisdk:@ai-sdk/anthropic@3.0.118",
     baseURL: `${BASE_HOST}/v1`,
   },
   gemini: {
     providerID: "codex-everywhere-gemini",
     providerName: "Codex Everywhere · Gemini",
-    pkg: "aisdk:@ai-sdk/google",
+    pkg: "aisdk:@ai-sdk/google@3.0.123",
     baseURL: `${BASE_HOST}/v1beta`,
   },
   grok: {
     providerID: "codex-everywhere-grok",
     providerName: "Codex Everywhere · Grok",
-    pkg: "aisdk:@ai-sdk/openai",
+    pkg: "aisdk:@ai-sdk/openai@3.0.113",
     baseURL: `${BASE_HOST}/v1`,
   },
   // O pool DeepSeek fala o Responses API (adaptado pelo CE/DeepSeek para
@@ -75,14 +83,14 @@ export const FAMILIES: Readonly<Record<Family, FamilySpec>> = {
   deepseek: {
     providerID: "codex-everywhere-deepseek",
     providerName: "Codex Everywhere · DeepSeek",
-    pkg: "aisdk:@ai-sdk/openai",
+    pkg: "aisdk:@ai-sdk/openai@3.0.113",
     baseURL: `${BASE_HOST}/v1`,
   },
 }
 
 // CODEX_EVERYWHERE_COMPAT=1 forca @ai-sdk/openai-compatible (/v1/chat/completions)
 // em todas as familias — rota de fuga se algum pool nao aceitar o SDK nativo.
-const COMPAT_PACKAGE = "aisdk:@ai-sdk/openai-compatible"
+const COMPAT_PACKAGE = "aisdk:@ai-sdk/openai-compatible@2.0.75"
 const compatMode = () => process.env.CODEX_EVERYWHERE_COMPAT === "1" || process.env.CODEX_EVERYWHERE_COMPAT === "true"
 
 export function familyOf(id: string): Family {
