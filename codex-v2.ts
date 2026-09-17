@@ -1,11 +1,14 @@
-import { define, type CatalogDraft, type PluginContext } from "@opencode-ai/plugin/v2/promise"
+import { define } from "@opencode-ai/plugin/v2/promise"
+import type { Model, Plugin, Provider } from "@opencode/plugin"
 
+type PluginContext = Plugin.Context
+export type ProviderEditor = Parameters<Parameters<Plugin.Context["provider"]["transform"]>[0]>[0]
 type Fetcher = (input: string | URL | Request, init?: RequestInit) => Promise<Response>
 export type RefreshScheduler = (callback: () => Promise<void>, delayMs: number) => unknown
 
 // ---------------------------------------------------------------------------
-// Runtime-openCode-2 plugin (catalog API). A versao v1 mora em codex-v1.ts;
-// o server.ts escolhe a implementacao certa por runtime.
+// Runtime-openCode-2 plugin (provider API, OpenCode 2.0.5+). A versao v1 mora
+// em codex-v1.ts; o server.ts escolhe a implementacao certa por runtime.
 //
 // A Codex Everywhere expoe o MESMO host (codex-easy.ai) em tres protocolos:
 //   - OpenAI Responses/Chat:  /v1         -> modelos gpt-*, codex-*, grok-*, deepseek-*
@@ -369,7 +372,7 @@ export async function fetchModels(apiKey: string, fetcher: Fetcher = fetch): Pro
   return out
 }
 
-export function applyCatalog(catalog: CatalogDraft, apiKey: string, models: readonly CodexModel[]): void {
+export function applyProviders(providers: ProviderEditor, apiKey: string, models: readonly CodexModel[]): void {
   const active = models.filter((model) => !isRemoved(model.id))
   const byFamily = new Map<Family, CodexModel[]>()
   for (const model of active) {
@@ -381,61 +384,54 @@ export function applyCatalog(catalog: CatalogDraft, apiKey: string, models: read
 
   for (const [family, familyModels] of byFamily) {
     const spec = FAMILIES[family]
+    const providerID = spec.providerID as Provider.ID
     const pkg = compatMode() ? COMPAT_PACKAGE : spec.pkg
     const baseURL = process.env.CODEX_EVERYWHERE_BASE_URL ?? spec.baseURL
     const settings = { baseURL, apiKey }
-
-    catalog.provider.update(spec.providerID, (provider) => {
-      provider.name = spec.providerName
-      const p = provider as unknown as Record<string, unknown>
-      p.package = pkg
-      p.settings = settings
-      provider.api = { type: "aisdk", package: pkg, settings }
-      provider.request = { headers: {}, body: family === "openai" || family === "deepseek" ? { store: false } : {} }
-    })
-
-    for (const source of familyModels) {
-      catalog.model.update(spec.providerID, source.id, (model) => {
-        model.name = source.name ?? source.display_name ?? source.id
-        const m = model as unknown as Record<string, unknown>
-        m.package = pkg
-        m.settings = settings
-        m.family = family
-        model.api = { id: source.id, type: "aisdk", package: pkg, settings }
-        const spec2 = specOf(source)
-        model.limit = { context: source.context_length ?? spec2.context, output: spec2.output }
-        model.capabilities = {
+    const info = {
+      id: providerID,
+      name: spec.providerName,
+      activation: "auto",
+      package: pkg,
+      settings,
+      headers: {},
+      body: family === "openai" || family === "deepseek" ? { store: false } : {},
+    } satisfies Provider.Info
+    const providerModels = familyModels.map((source): Model.Info => {
+      const id = source.id as Model.ID
+      const modelSpec = specOf(source)
+      const efforts = modelSpec.efforts ?? []
+      return {
+        id,
+        modelID: id,
+        providerID,
+        family: family as Model.Family,
+        name: source.name ?? source.display_name ?? source.id,
+        package: pkg,
+        settings,
+        capabilities: {
           tools: supportsTools(source.id),
           input: inputModalities(source.id),
           output: outputModalities(source.id),
-        }
-        // O CE nao expoe custo no /models; usamos as tabelas dos pools (doc).
-        model.cost = [spec2.cost ?? { input: 0, output: 0, cache: { read: 0, write: 0 } }]
-        const efforts = spec2.efforts ?? []
-        model.variants = efforts.map((effort) => ({
-          id: effort,
+        },
+        variants: efforts.map((effort) => ({
+          id: effort as Model.VariantID,
           headers: {},
-          // Gemini 3 fala thinkingLevel (minimal/low/medium/high) dentro de
-          // generationConfig; o DeepSeek fala reasoning.effort (aninhado) no
-          // Responses — reasoning_effort de topo e ignorado pelo gateway
-          // (verificado ao vivo). As demais familias recebem reasoning_effort
-          // e o gateway do CE traduz (doc oficial).
           body: family === "gemini"
             ? { generationConfig: { thinkingConfig: { thinkingLevel: effort } } }
             : family === "deepseek"
               ? { reasoning: { effort } }
               : { reasoning_effort: effort },
-        }))
-        if (family === "openai" || family === "deepseek") {
-          // doc oficial do CE para OpenCode: store:false nos modelos OpenAI
-          // (o Responses do DeepSeek tambem responde store:false por padrao)
-          model.request = { headers: {}, body: { store: false } }
-        }
-        const mm = model as unknown as Record<string, unknown>
-        if (mm.enabled === undefined) mm.enabled = true
-        if (mm.status === undefined) mm.status = "active"
-      })
-    }
+        })),
+        time: { released: 0 },
+        cost: [(modelSpec.cost ?? { input: 0, output: 0, cache: { read: 0, write: 0 } }) as Model.Cost],
+        status: "active",
+        enabled: true,
+        limit: { context: source.context_length ?? modelSpec.context, output: modelSpec.output },
+        ...(family === "openai" || family === "deepseek" ? { headers: {}, body: { store: false } } : {}),
+      }
+    })
+    providers.add({ info, models: providerModels })
   }
 }
 
@@ -448,12 +444,12 @@ const signatureOf = (models: readonly CodexModel[]): string =>
 // ---------------------------------------------------------------------------
 // Descoberta dinamica com refresh: o conjunto de modelos muda quando o pool da
 // API key muda no site (Codex/Claude/Grok/Gemini) — entao rebuscamos e, se a
-// assinatura mudou, pedimos catalog.reload() pro host re-transformar.
+// assinatura mudou, pedimos provider.reload() pro host re-transformar.
 // ---------------------------------------------------------------------------
 export async function registerDynamicModelCatalog<Model>(options: {
   ctx: PluginContext
   load: () => Promise<Model[]>
-  apply: (catalog: CatalogDraft, models: readonly Model[]) => void
+  applyProvider: (providers: ProviderEditor, models: readonly Model[]) => void
   signature: (models: readonly Model[]) => string
   refreshMs: number
   schedule?: RefreshScheduler
@@ -472,8 +468,8 @@ export async function registerDynamicModelCatalog<Model>(options: {
   let signature = options.signature(models)
   let generation = 0
   let appliedGeneration = -1
-  await options.ctx.catalog.transform((catalog) => {
-    options.apply(catalog, models)
+  await options.ctx.provider.transform((providers) => {
+    options.applyProvider(providers, models)
     appliedGeneration = generation
   })
   if (initialLoaded) options.onApplied?.(models)
@@ -488,7 +484,7 @@ export async function registerDynamicModelCatalog<Model>(options: {
       models = next
       const targetGeneration = ++generation
       for (let attempt = 0; appliedGeneration < targetGeneration && attempt < 2; attempt++) {
-        await options.ctx.catalog.reload()
+        await options.ctx.provider.reload()
       }
       if (appliedGeneration < targetGeneration) {
         options.onStale?.()
@@ -515,7 +511,7 @@ export async function setupCodexEverywhere(
   await registerDynamicModelCatalog({
     ctx,
     load: () => fetchModels(apiKey, fetcher),
-    apply: (catalog, models) => applyCatalog(catalog, apiKey, models),
+    applyProvider: (providers, models) => applyProviders(providers, apiKey, models),
     signature: signatureOf,
     refreshMs: REFRESH_MS,
     schedule,
